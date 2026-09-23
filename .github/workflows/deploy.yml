@@ -246,6 +246,30 @@ jobs:
         if: steps.plan.outputs.changes == '2'
         run: tofu apply -input=false -lock-timeout=5m tfplan
 
+      # Premier déploiement d'un environnement : les domaines sont créés APRÈS le
+      # compose, les conteneurs n'ont donc pas les labels Traefik (404 + certificat
+      # par défaut). On détecte ce cas et on redemande un déploiement à Dokploy.
+      - name: Redeploy if the routes are missing
+        env:
+          SITE_DOMAIN: ${{ needs.resolve.outputs.site_domain }}
+          DOKPLOY_URL: https://dokploy.ops.koklo.dev
+        run: |
+          set -euo pipefail
+          code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 20 "https://${SITE_DOMAIN}/api/health" || true)
+          echo "health (sans vérif TLS) : ${code}"
+          if [ "${code}" = "404" ]; then
+            compose_id=$(tofu output -raw compose_id)
+            echo "Routes absentes : redéploiement du compose ${compose_id}"
+            curl -fsS -X POST "${DOKPLOY_URL}/api/compose.deploy" \
+              -H "x-api-key: ${DOKPLOY_API_KEY}" -H 'Content-Type: application/json' \
+              -d "{\"composeId\":\"${compose_id}\"}" -o /dev/null
+            for attempt in $(seq 1 30); do
+              code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 20 "https://${SITE_DOMAIN}/api/health" || true)
+              [ "${code}" = "200" ] && { echo "routes en place (${attempt})"; break; }
+              sleep 10
+            done
+          fi
+
       - name: Smoke test
         env:
           SITE_DOMAIN: ${{ needs.resolve.outputs.site_domain }}
@@ -253,7 +277,7 @@ jobs:
           set -euo pipefail
           for path in /api/health / /admin/login /robots.txt; do
             echo "checking https://${SITE_DOMAIN}${path}"
-            curl -fsS --retry 6 --retry-delay 10 --retry-all-errors -o /dev/null "https://${SITE_DOMAIN}${path}"
+            curl -fsS --retry 12 --retry-delay 10 --retry-all-errors -o /dev/null "https://${SITE_DOMAIN}${path}"
           done
 
       # Un 200 prouve seulement que quelque chose répond : on vérifie que c'est

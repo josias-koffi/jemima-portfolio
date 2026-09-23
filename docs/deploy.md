@@ -20,7 +20,7 @@ Pattern identique à cvforge : image GHCR → OpenTofu (DNS Cloudflare + Dokploy
 1. **Secrets** : `bash scripts/set-secrets.sh` (dépôt + environnements staging/production).
    La clé Dokploy doit avoir **Enable Rate Limiting désactivé** (sinon 401 pendant 24 h).
 2. **Push `develop`** → staging. Au tout premier apply, les domaines sont créés après le compose :
-   le site répond **404 → relancer le workflow une fois** (Actions › Deploy › Re-run).
+   le site répond 404 ; le workflow le détecte et redemande un déploiement à Dokploy (étape « Redeploy if the routes are missing »).
 3. **Import du contenu** : se connecter à `/admin` avec `ADMIN_EMAIL`, puis `POST /api/import-jekyll` (voir README).
 4. Créer le compte de Jémima dans *Réglages › Utilisateurs*.
 5. **Prod** : merge `develop` → `main`, puis étapes 3-4 sur la prod.
