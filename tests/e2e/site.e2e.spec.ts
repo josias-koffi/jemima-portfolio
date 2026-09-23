@@ -7,6 +7,7 @@ test('accueil : hero, liste des projets, à propos', async ({ page }) => {
   await expect(page.locator('h1.hero__name')).toHaveAttribute('aria-label', /Jémima/)
   await expect(page.locator('.work__item').first()).toBeVisible()
   await expect(page.locator('#a-propos')).toBeVisible()
+  await expect(page.locator('.hero .status')).toContainText(/alternance/i)
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
   expect(overflow).toBe(false)
 })
@@ -17,6 +18,7 @@ test('page projet et projet suivant', async ({ page }) => {
   const title = await first.locator('.work__title').innerText()
   await first.click()
   await expect(page.locator('h1.project__title')).toHaveText(title)
+  await expect(page.locator('.case__title').first()).toHaveText('Le défi')
   await expect(page.locator('a.next')).toBeVisible()
 })
 

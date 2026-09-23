@@ -1,8 +1,9 @@
 name: Import content
 
 # Importe le contenu de l'ancien site Jekyll (dossier seed/ de l'image) dans un
-# environnement. Idempotent : les projets existants sont ignorés, le profil
-# n'est rempli que s'il est vide (cocher « force » pour l'écraser).
+# environnement. Idempotent : les projets existants sont ignorés (cocher
+# « force_projects » pour mettre à jour leurs textes — médias et liens conservés),
+# le profil n'est rempli que s'il est vide (cocher « force_profile » pour l'écraser).
 # Se connecte avec ADMIN_EMAIL / ADMIN_PASSWORD de l'environnement choisi.
 
 on:
@@ -17,6 +18,10 @@ on:
         description: "Écraser le profil déjà rempli"
         type: boolean
         default: false
+      force_projects:
+        description: "Mettre à jour les textes des projets existants (médias conservés)"
+        type: boolean
+        default: false
 
 jobs:
   import:
@@ -26,7 +31,8 @@ jobs:
       - name: Import
         env:
           SITE: ${{ inputs.environment == 'production' && 'https://jemima.koklo.dev' || 'https://jemima-staging.koklo.dev' }}
-          FORCE: ${{ inputs.force_profile && '?force=1' || '' }}
+          FORCE_PROFILE: ${{ inputs.force_profile && '1' || '0' }}
+          FORCE_PROJECTS: ${{ inputs.force_projects && '1' || '0' }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
@@ -35,6 +41,6 @@ jobs:
             | curl -fsS -X POST "${SITE}/api/users/login" -H 'Content-Type: application/json' -d @- \
             | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
           echo "::add-mask::${token}"
-          report=$(curl -fsS -X POST "${SITE}/api/import-jekyll${FORCE}" -H "Authorization: JWT ${token}")
+          report=$(curl -fsS -X POST "${SITE}/api/import-jekyll?force=${FORCE_PROFILE}&forceProjects=${FORCE_PROJECTS}" -H "Authorization: JWT ${token}")
           echo "${report}" | python3 -m json.tool
           { echo '## Import'; echo '```json'; echo "${report}" | python3 -m json.tool; echo '```'; } >> "${GITHUB_STEP_SUMMARY}"

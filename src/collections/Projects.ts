@@ -81,8 +81,42 @@ export const Projects: CollectionConfig = {
       ],
     },
     {
+      name: 'caseStudy',
+      label: 'Étude de cas',
+      type: 'group',
+      admin: {
+        description:
+          'Affichée en 4 chapitres sous la couverture : Le défi → La stratégie → Réalisations → Impact. Un chapitre vide est masqué.',
+      },
+      fields: [
+        { name: 'challenge', label: 'Le défi (contexte)', type: 'textarea' },
+        {
+          name: 'strategy',
+          label: 'La stratégie',
+          type: 'array',
+          labels: { singular: 'Point', plural: 'Points' },
+          fields: [{ name: 'text', label: 'Texte', type: 'textarea', required: true }],
+        },
+        {
+          name: 'deliverables',
+          label: 'Réalisations',
+          type: 'array',
+          labels: { singular: 'Réalisation', plural: 'Réalisations' },
+          fields: [{ name: 'text', label: 'Texte', type: 'textarea', required: true }],
+        },
+        {
+          name: 'impact',
+          label: 'Impact / résultats',
+          type: 'array',
+          labels: { singular: 'Résultat', plural: 'Résultats' },
+          admin: { description: 'Idéalement chiffré : abonnés gagnés, participants, portée…' },
+          fields: [{ name: 'text', label: 'Texte', type: 'textarea', required: true }],
+        },
+      ],
+    },
+    {
       name: 'content',
-      label: 'Texte du projet',
+      label: 'Texte du projet (détails, images, vidéos)',
       type: 'richText',
       editor: projectEditor,
       admin: {

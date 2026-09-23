@@ -166,6 +166,33 @@ export interface Project {
    */
   coverAlt?: string | null;
   /**
+   * Affichée en 4 chapitres sous la couverture : Le défi → La stratégie → Réalisations → Impact. Un chapitre vide est masqué.
+   */
+  caseStudy?: {
+    challenge?: string | null;
+    strategy?:
+      | {
+          text: string;
+          id?: string | null;
+        }[]
+      | null;
+    deliverables?:
+      | {
+          text: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Idéalement chiffré : abonnés gagnés, participants, portée…
+     */
+    impact?:
+      | {
+          text: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  /**
    * Titres, paragraphes, listes. Bouton « + » ou « / » : insérer une image/vidéo de la médiathèque ou une vidéo YouTube entre deux paragraphes.
    */
   content?: {
@@ -203,7 +230,7 @@ export interface Project {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Images (JPG, PNG, WebP…) et vidéos MP4/WebM. Stockées dans MinIO.
+ * Images (JPG, PNG, WebP…), vidéos MP4/WebM et PDF (CV). Stockées dans MinIO.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
@@ -380,6 +407,29 @@ export interface ProjectsSelect<T extends boolean = true> {
       };
   cover?: T;
   coverAlt?: T;
+  caseStudy?:
+    | T
+    | {
+        challenge?: T;
+        strategy?:
+          | T
+          | {
+              text?: T;
+              id?: T;
+            };
+        deliverables?:
+          | T
+          | {
+              text?: T;
+              id?: T;
+            };
+        impact?:
+          | T
+          | {
+              text?: T;
+              id?: T;
+            };
+      };
   content?: T;
   gallery?:
     | T
@@ -555,6 +605,10 @@ export interface Profile {
           }
       )[]
     | null;
+  /**
+   * Ex. « En recherche d’alternance / stage — Paris ». Laisser vide pour masquer la pastille.
+   */
+  availability?: string | null;
   heroPhoto?: (number | null) | Media;
   marquee?:
     | {
@@ -570,10 +624,26 @@ export interface Profile {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Affichée en grand, en italique, sous les paragraphes.
+   */
+  drive?: string | null;
   expertises?:
     | {
         label: string;
         title: string;
+        items?:
+          | {
+              label: string;
+              id?: string | null;
+            }[]
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  tools?:
+    | {
+        label: string;
         items?:
           | {
               label: string;
@@ -589,7 +659,26 @@ export interface Profile {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Uniquement de vrais retours (manager, client, partenaire). Section masquée si vide.
+   */
+  testimonials?:
+    | {
+        quote: string;
+        author: string;
+        context?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Sous « Parlons-en. ».
+   */
+  contactLead?: string | null;
   email?: string | null;
+  /**
+   * Affiche les boutons « Télécharger mon CV » (pied de page et menu).
+   */
+  cv?: (number | null) | Media;
   phone?: string | null;
   linkedin?: string | null;
   instagram?: string | null;
@@ -631,6 +720,7 @@ export interface ProfileSelect<T extends boolean = true> {
               blockName?: T;
             };
       };
+  availability?: T;
   heroPhoto?: T;
   marquee?:
     | T
@@ -646,11 +736,24 @@ export interface ProfileSelect<T extends boolean = true> {
         text?: T;
         id?: T;
       };
+  drive?: T;
   expertises?:
     | T
     | {
         label?: T;
         title?: T;
+        items?:
+          | T
+          | {
+              label?: T;
+              id?: T;
+            };
+        id?: T;
+      };
+  tools?:
+    | T
+    | {
+        label?: T;
         items?:
           | T
           | {
@@ -665,7 +768,17 @@ export interface ProfileSelect<T extends boolean = true> {
         label?: T;
         id?: T;
       };
+  testimonials?:
+    | T
+    | {
+        quote?: T;
+        author?: T;
+        context?: T;
+        id?: T;
+      };
+  contactLead?: T;
   email?: T;
+  cv?: T;
   phone?: T;
   linkedin?: T;
   instagram?: T;

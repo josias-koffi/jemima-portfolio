@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import type { CSSProperties } from 'react'
 
+import { CaseStudy } from '../../../../components/CaseStudy'
 import { Cover } from '../../../../components/Cover'
 import { ProjectContent } from '../../../../components/ProjectContent'
 import { getProjects } from '../../../../lib/data'
@@ -94,6 +95,8 @@ export default async function ProjectPage({ params }: Params) {
       </header>
 
       <Cover project={project} className="project__cover" eager sizes="(max-width: 1360px) 100vw, 1360px" />
+
+      <CaseStudy data={project.caseStudy} />
 
       <div className="project__body wrap">
         {project.content && <ProjectContent data={project.content as SerializedEditorState} />}

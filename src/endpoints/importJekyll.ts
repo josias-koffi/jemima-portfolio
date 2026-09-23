@@ -9,7 +9,8 @@ import YAML from 'yaml'
 /**
  * POST /api/import-jekyll — importe le contenu de l'ancien site Jekyll (dossier seed/).
  * Réservé aux admins connectés. Idempotent : un projet dont le slug existe déjà
- * est ignoré, le profil n'est rempli que s'il est vide (sauf ?force=1).
+ * est ignoré (sauf ?forceProjects=1 : ses textes sont mis à jour, ses médias et
+ * liens conservés), le profil n'est rempli que s'il est vide (sauf ?force=1).
  */
 
 const SEED_DIR = path.resolve(process.cwd(), 'seed')
@@ -22,7 +23,7 @@ const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
 }
 
-type Report = { media: string[]; projects: string[]; skipped: string[]; profile: string }
+type Report = { media: string[]; projects: string[]; updated: string[]; skipped: string[]; profile: string }
 
 async function uploadOnce(req: PayloadRequest, file: string, alt: string, report: Report) {
   const name = path.basename(file)
@@ -55,6 +56,17 @@ export const cleanMarkdown = (md: string) =>
 
 const blank = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined)
 
+const rows = (v: unknown) =>
+  (Array.isArray(v) ? v : []).map((t) => blank(t)).filter((t): t is string => Boolean(t)).map((text) => ({ text }))
+
+/** Front-matter challenge / strategy / deliverables / impact → groupe « Étude de cas ». */
+export const caseStudyFromFrontMatter = (fm: Record<string, unknown>) => ({
+  challenge: blank(fm.challenge),
+  strategy: rows(fm.strategy),
+  deliverables: rows(fm.deliverables),
+  impact: rows(fm.impact),
+})
+
 async function importProfile(req: PayloadRequest, force: boolean, report: Report) {
   const current = await req.payload.findGlobal({ slug: 'profile', req })
   if (current.firstName && !force) {
@@ -78,6 +90,9 @@ async function importProfile(req: PayloadRequest, force: boolean, report: Report
       location: p.location,
       role: p.role,
       status: p.status,
+      availability: blank(p.availability),
+      drive: blank(p.drive),
+      contactLead: blank(p.contact_lead),
       heroPhoto: hero,
       portrait,
       shareImage: share,
@@ -89,6 +104,15 @@ async function importProfile(req: PayloadRequest, force: boolean, report: Report
       marquee: (p.marquee ?? []).map((label: string) => ({ label })),
       about: (p.about ?? []).map((text: string) => ({ text })),
       process: (p.process ?? []).map((label: string) => ({ label })),
+      tools: (p.tools ?? []).map((t: { label: string; items: string[] }) => ({
+        label: t.label,
+        items: (t.items ?? []).map((label) => ({ label })),
+      })),
+      testimonials: (p.testimonials ?? []).map((t: { quote: string; author: string; context?: string }) => ({
+        quote: t.quote,
+        author: t.author,
+        context: blank(t.context),
+      })),
       expertises: (p.expertises ?? []).map((e: { label: string; title: string; items: string[] }) => ({
         label: e.label,
         title: e.title,
@@ -98,7 +122,9 @@ async function importProfile(req: PayloadRequest, force: boolean, report: Report
       intro: [
         { blockType: 'text', text: 'Moi, c’est ' },
         { blockType: 'word', label: 'Jémima', image: portrait, tilt: 'r' },
-        { blockType: 'text', text: '. Je transforme un brief en ' },
+        { blockType: 'text', text: '. Entre ' },
+        { blockType: 'word', label: 'l’Afrique de l’Ouest et Paris', note: 'Deux cultures, une même exigence de marque', tilt: 'r' },
+        { blockType: 'text', text: ', je transforme un brief en ' },
         { blockType: 'word', label: 'campagnes 360°', note: 'Netis Group — télécoms & énergie', tilt: 'l' },
         { blockType: 'text', text: ', en ' },
         { blockType: 'word', label: 'contenus', note: 'Boya Food — Instagram, TikTok, Facebook', tilt: 'r' },
@@ -111,7 +137,7 @@ async function importProfile(req: PayloadRequest, force: boolean, report: Report
   report.profile = 'importé'
 }
 
-async function importProjects(req: PayloadRequest, report: Report) {
+async function importProjects(req: PayloadRequest, forceProjects: boolean, report: Report) {
   const editorConfig = await editorConfigFactory.default({ config: req.payload.config })
   const dir = path.join(SEED_DIR, 'projects')
   for (const file of (await fs.readdir(dir)).filter((f) => f.endsWith('.md')).sort()) {
@@ -123,11 +149,34 @@ async function importProjects(req: PayloadRequest, report: Report) {
       draft: true,
       req,
     })
-    if (exists.docs[0]) {
+    const existing = exists.docs[0]
+    if (existing && !forceProjects) {
       report.skipped.push(slug)
       continue
     }
     const { data: fm, content } = matter(await fs.readFile(path.join(dir, file), 'utf8'))
+    // Textes seulement : couverture, galerie et liens ajoutés dans l'admin sont conservés.
+    const text = {
+      title: fm.title,
+      client: blank(fm.client),
+      year: blank(fm.year),
+      tagline: blank(fm.tagline),
+      role: blank(fm.role),
+      expertises: (fm.expertises ?? []).map((label: string) => ({ label })),
+      caseStudy: caseStudyFromFrontMatter(fm),
+      content: convertMarkdownToLexical({ editorConfig, markdown: cleanMarkdown(content) }),
+    }
+    if (existing) {
+      await req.payload.update({
+        collection: 'projects',
+        id: existing.id,
+        req,
+        draft: false,
+        data: { ...text, _status: 'published' },
+      })
+      report.updated.push(slug)
+      continue
+    }
     const cover = blank(fm.cover)
       ? await uploadOnce(req, `projects/${slug}/${path.basename(fm.cover)}`, fm.cover_alt ?? fm.title, report)
       : undefined
@@ -138,19 +187,13 @@ async function importProjects(req: PayloadRequest, report: Report) {
       draft: false,
       data: {
         _status: 'published',
-        title: fm.title,
+        ...text,
         slug,
         order: fm.order ?? 99,
-        client: blank(fm.client),
-        year: blank(fm.year),
-        tagline: blank(fm.tagline),
-        role: blank(fm.role),
         tone: ['accent', 'ink', 'sand'].includes(fm.tone) ? fm.tone : 'accent',
-        expertises: (fm.expertises ?? []).map((label: string) => ({ label })),
         cover,
         coverAlt: blank(fm.cover_alt),
         links: (fm.links ?? []).map((l: { label: string; url: string }) => ({ label: l.label, url: l.url })),
-        content: convertMarkdownToLexical({ editorConfig, markdown: cleanMarkdown(content) }),
       },
     })
     report.projects.push(slug)
@@ -162,10 +205,10 @@ export const importJekyllEndpoint: Endpoint = {
   method: 'post',
   handler: async (req) => {
     if (!req.user) return Response.json({ error: 'Connexion admin requise' }, { status: 401 })
-    const force = new URL(req.url ?? 'http://x').searchParams.get('force') === '1'
-    const report: Report = { media: [], projects: [], skipped: [], profile: '' }
-    await importProfile(req, force, report)
-    await importProjects(req, report)
+    const params = new URL(req.url ?? 'http://x').searchParams
+    const report: Report = { media: [], projects: [], updated: [], skipped: [], profile: '' }
+    await importProfile(req, params.get('force') === '1', report)
+    await importProjects(req, params.get('forceProjects') === '1', report)
     return Response.json(report)
   },
 }

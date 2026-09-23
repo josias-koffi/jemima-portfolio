@@ -9,7 +9,7 @@ export const Media: CollectionConfig = {
   labels: { singular: 'Média', plural: 'Médiathèque' },
   admin: {
     group: 'Contenu',
-    description: 'Images (JPG, PNG, WebP…) et vidéos MP4/WebM. Stockées dans MinIO.',
+    description: 'Images (JPG, PNG, WebP…), vidéos MP4/WebM et PDF (CV). Stockées dans MinIO.',
   },
   access: { read: () => true },
   hooks: {
@@ -26,7 +26,7 @@ export const Media: CollectionConfig = {
     { name: 'caption', label: 'Légende par défaut', type: 'text' },
   ],
   upload: {
-    mimeTypes: ['image/*', 'video/mp4', 'video/webm'],
+    mimeTypes: ['image/*', 'video/mp4', 'video/webm', 'application/pdf'],
     adminThumbnail: 'small',
     focalPoint: true,
     imageSizes: [

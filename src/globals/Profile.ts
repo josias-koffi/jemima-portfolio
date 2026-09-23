@@ -71,6 +71,12 @@ export const Profile: GlobalConfig = {
                   'Alterner des blocs « Texte » et « Mot en gras ». Les espaces et la ponctuation sont dans les blocs Texte.',
               },
             },
+            {
+              name: 'availability',
+              label: 'Disponibilité (pastille du hero)',
+              type: 'text',
+              admin: { description: 'Ex. « En recherche d’alternance / stage — Paris ». Laisser vide pour masquer la pastille.' },
+            },
             { name: 'heroPhoto', label: 'Photo du hero', type: 'upload', relationTo: 'media' },
             { name: 'marquee', label: 'Bandeau défilant', type: 'array', fields: [{ name: 'label', type: 'text', required: true }] },
           ],
@@ -81,6 +87,12 @@ export const Profile: GlobalConfig = {
             { name: 'portrait', label: 'Photo « À propos »', type: 'upload', relationTo: 'media' },
             { name: 'status', label: 'Légende sous la photo', type: 'text' },
             { name: 'about', label: 'Paragraphes', type: 'array', fields: [{ name: 'text', type: 'textarea', required: true }] },
+            {
+              name: 'drive',
+              label: 'Ce qui m’anime (grande phrase)',
+              type: 'textarea',
+              admin: { description: 'Affichée en grand, en italique, sous les paragraphes.' },
+            },
             {
               name: 'expertises',
               label: 'Expertises (4 blocs)',
@@ -96,13 +108,54 @@ export const Profile: GlobalConfig = {
                 { name: 'items', label: 'Éléments', type: 'array', fields: [{ name: 'label', type: 'text', required: true }] },
               ],
             },
+            {
+              name: 'tools',
+              label: 'Outils (sous les expertises)',
+              type: 'array',
+              labels: { singular: 'Pilier', plural: 'Piliers' },
+              fields: [
+                { name: 'label', label: 'Pilier', type: 'text', required: true },
+                { name: 'items', label: 'Outils', type: 'array', fields: [{ name: 'label', type: 'text', required: true }] },
+              ],
+            },
             { name: 'process', label: 'Méthode (étapes)', type: 'array', fields: [{ name: 'label', type: 'text', required: true }] },
+            {
+              name: 'testimonials',
+              label: 'Témoignages',
+              type: 'array',
+              labels: { singular: 'Témoignage', plural: 'Témoignages' },
+              admin: { description: 'Uniquement de vrais retours (manager, client, partenaire). Section masquée si vide.' },
+              fields: [
+                { name: 'quote', label: 'Citation', type: 'textarea', required: true },
+                {
+                  type: 'row',
+                  fields: [
+                    { name: 'author', label: 'Auteur', type: 'text', required: true },
+                    { name: 'context', label: 'Fonction / entreprise', type: 'text' },
+                  ],
+                },
+              ],
+            },
           ],
         },
         {
           label: 'Contact & partage',
           fields: [
+            {
+              name: 'contactLead',
+              label: 'Phrase du pied de page',
+              type: 'textarea',
+              admin: { description: 'Sous « Parlons-en. ».' },
+            },
             { name: 'email', label: 'E-mail', type: 'email' },
+            {
+              name: 'cv',
+              label: 'CV (PDF)',
+              type: 'upload',
+              relationTo: 'media',
+              filterOptions: { mimeType: { equals: 'application/pdf' } },
+              admin: { description: 'Affiche les boutons « Télécharger mon CV » (pied de page et menu).' },
+            },
             { name: 'phone', label: 'Téléphone (laisser vide pour ne pas l’afficher)', type: 'text' },
             { name: 'linkedin', label: 'LinkedIn (URL)', type: 'text' },
             {

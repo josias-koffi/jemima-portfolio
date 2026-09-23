@@ -128,6 +128,8 @@ a { color: inherit; }
 .btn:hover { background: var(--ink); color: var(--on-dark); }
 .btn--accent { background: var(--accent); border-color: var(--accent); color: var(--on-dark); }
 .btn--accent:hover { background: var(--ink); border-color: var(--ink); }
+.btn--light { border-color: var(--on-dark-muted); color: var(--on-dark); }
+.btn--light:hover { background: var(--on-dark); border-color: var(--on-dark); color: var(--ink); }
 
 /* ---------- Navigation ---------- */
 
@@ -242,6 +244,29 @@ a { color: inherit; }
 .hint { font-size: 0.85rem; color: var(--muted); font-style: italic; }
 .hint__touch { display: none; }
 @media (hover: none) { .hint__hover { display: none; } .hint__touch { display: inline; } }
+
+/* pastille de disponibilité */
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgb(47 125 79 / 0.45); } 70%, 100% { box-shadow: 0 0 0 9px rgb(47 125 79 / 0); } }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.9rem 0.45rem 0.75rem;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.status__dot {
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #2f7d4f; /* vert, décor uniquement */
+  animation: pulse 2.4s ease-out infinite;
+}
 
 /* ---------- Photo du hero : carte 3D qui suit la souris (sans JS) ----------
    Une grille invisible de 3×3 zones couvre la photo ; la zone survolée
@@ -525,6 +550,16 @@ a { color: inherit; }
 .about__text p:not(.label) { max-width: 58ch; font-size: 1.125rem; }
 .about__text .section-title { margin-bottom: 0.5rem; }
 
+.about__text p.drive {
+  margin-top: 0.75rem;
+  max-width: 26ch;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  line-height: 1.15;
+  color: var(--accent);
+}
+
 .expertises {
   list-style: none;
   margin: clamp(3rem, 7vw, 6rem) 0 0;
@@ -538,6 +573,21 @@ a { color: inherit; }
 .expertise h3 { font-family: var(--serif); font-size: 1.9rem; line-height: 1.05; }
 .expertise p:not(.label) { color: var(--muted); font-size: 0.975rem; }
 
+.tools {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
+  gap: 1rem 2rem;
+  padding-block: 1.5rem;
+  border-block: 1px solid var(--line);
+}
+.tools__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem 2rem;
+}
+.tools__list dt { font-weight: 700; font-size: 0.95rem; }
+.tools__list dd { margin-top: 0.25rem; color: var(--muted); font-size: 0.95rem; }
+
 .process {
   display: flex;
   flex-wrap: wrap;
@@ -550,6 +600,25 @@ a { color: inherit; }
   line-height: 1.2;
 }
 .process__arrow { font-style: normal; color: var(--accent); font-size: 0.7em; }
+
+.quotes {
+  list-style: none;
+  margin: clamp(3rem, 7vw, 6rem) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+.quote { display: grid; align-content: start; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--ink); }
+.quote blockquote { margin: 0; }
+.quote blockquote p {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+.quote blockquote p::before { content: "« "; color: var(--accent); }
+.quote blockquote p::after { content: " »"; color: var(--accent); }
 
 /* ---------- Page projet ---------- */
 
@@ -594,6 +663,42 @@ a { color: inherit; }
   aspect-ratio: 16 / 9;
 }
 .project__cover .cover__type { font-size: clamp(3rem, 11vw, 10rem); }
+
+/* étude de cas : 4 chapitres calés sur la méthode */
+.case { padding-top: clamp(3rem, 7vw, 6rem); }
+.case__step {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
+  gap: 1rem 2rem;
+  padding-block: clamp(1.75rem, 4vw, 3rem);
+  border-top: 1px solid var(--ink);
+}
+.case__head { display: grid; align-content: start; gap: 0.5rem; }
+.case__title { font-family: var(--serif); font-size: clamp(2rem, 3.5vw, 2.75rem); line-height: 1; }
+.case__body { max-width: 66ch; }
+.case__lead { font-size: clamp(1.2rem, 2vw, 1.45rem); line-height: 1.45; font-weight: 500; }
+.case__list { margin: 0; padding: 0; list-style: none; }
+.case__list li { position: relative; padding-left: 1.75rem; font-size: 1.125rem; }
+.case__list li + li { margin-top: 0.6rem; }
+.case__list li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+
+.case__step--impact {
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
+  background: var(--ink);
+  color: var(--on-dark);
+  border-top-color: var(--ink);
+  border-radius: 4px;
+}
+.case__step--impact .label { color: var(--on-dark-muted); }
+.case__step--impact .case__title { color: var(--accent-soft); font-style: italic; }
+.case__step--impact .case__list li {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: 1.2;
+}
+.case__step--impact .case__list li::before { color: var(--accent-soft); }
+.case + .project__body { padding-top: clamp(2rem, 5vw, 4rem); }
 
 .project__body {
   display: grid;
@@ -679,6 +784,9 @@ a { color: inherit; }
 .footer__title em { color: var(--accent-soft); }
 
 .footer__lead { margin-top: 2rem; max-width: 40ch; font-size: 1.2rem; color: var(--on-dark-muted); }
+
+.footer__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2.5rem; }
+.footer__actions .btn--accent:hover { background: var(--on-dark); border-color: var(--on-dark); color: var(--ink); }
 
 .footer__mail {
   display: inline-block;
@@ -778,6 +886,7 @@ a { color: inherit; }
   .expertise:nth-child(n + 3) { border-top: 1px solid var(--line); }
   .project__body { grid-template-columns: minmax(0, 1fr); }
   .project__body > * { grid-column: 1; }
+  .case__step, .tools { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* mobile + écrans tactiles : les couvertures sont toujours visibles */
@@ -842,5 +951,6 @@ a { color: inherit; }
   .marquee__track { animation: none !important; }
   .hero__float, .hero__badge { animation: none !important; }
   .hero__tilt { transform: none !important; }
+  .status__dot { animation: none !important; }
   @view-transition { navigation: none; }
 }

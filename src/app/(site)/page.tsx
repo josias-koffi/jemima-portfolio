@@ -71,6 +71,12 @@ export default async function HomePage() {
             )}
           </p>
           <div className="hero__aside intro" style={d(5)}>
+            {p.availability && (
+              <p className="status">
+                <span className="status__dot" aria-hidden="true" />
+                {p.availability}
+              </p>
+            )}
             <p className="hint">
               <span className="hint__hover">(survolez les mots en gras)</span>
               <span className="hint__touch">(touchez les mots en gras)</span>
@@ -132,6 +138,7 @@ export default async function HomePage() {
                 {para.text}
               </p>
             ))}
+            {p.drive && <p className="drive reveal">{p.drive}</p>}
           </div>
         </div>
 
@@ -148,6 +155,20 @@ export default async function HomePage() {
             ))}
           </ul>
 
+          {(p.tools ?? []).length > 0 && (
+            <div className="tools reveal">
+              <p className="label">Boîte à outils</p>
+              <dl className="tools__list">
+                {p.tools!.map((t) => (
+                  <div key={t.id}>
+                    <dt>{t.label}</dt>
+                    <dd>{(t.items ?? []).map((it) => it.label).join(' · ')}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
           <p className="process reveal" aria-label="Ma méthode">
             {(p.process ?? []).map((step, i, all) => (
               <Fragment key={step.id}>
@@ -160,6 +181,22 @@ export default async function HomePage() {
               </Fragment>
             ))}
           </p>
+
+          {(p.testimonials ?? []).length > 0 && (
+            <ul className="quotes" aria-label="Ils en parlent">
+              {p.testimonials!.map((t) => (
+                <li className="quote reveal" key={t.id}>
+                  <blockquote>
+                    <p>{t.quote}</p>
+                  </blockquote>
+                  <p className="label">
+                    {t.author}
+                    {t.context && <> — {t.context}</>}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
     </>

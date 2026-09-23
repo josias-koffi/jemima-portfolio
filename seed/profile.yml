@@ -6,6 +6,8 @@ name_last: Egla
 location: Paris, FR
 role: Communication · Brand Content · Activation
 status: Mastère MarCom & RP — INSEEC Paris
+# Pastille du hero (laisser vide pour la masquer)
+availability: En recherche d'alternance / stage — Paris
 
 hero_photo: /assets/img/profile_hero_section.jpeg # photo du hero (laisser vide pour la masquer)
 hero_photo_alt: Jémima Egla assise, dans une pose majestueuse
@@ -16,6 +18,7 @@ portrait_alt: Jémima Egla en pleine prise de parole, en noir et blanc
 # Une page projet avec une couverture utilise sa couverture à la place.
 share_image: /assets/img/jemima-parole.jpg
 
+contact_lead: Un projet en tête, une opportunité à discuter ou envie d'échanger ? Mon inbox est ouverte.
 email: jemimae.egla@gmail.com
 phone: "" # ex. "+33 7 …" — laisser vide pour ne pas l'afficher en ligne
 linkedin: https://www.linkedin.com/in/jémima-egla-76b5a1245
@@ -34,6 +37,9 @@ about:
     - Je suis communicante spécialisée en contenus digitaux, communication visuelle et activation de marque.
     - "Mon parcours, entre l'Afrique de l'Ouest et Paris, m'a amenée à travailler sur des campagnes 360°, des contenus digitaux, des événements, des supports visuels ainsi que des projets de communication interne et externe."
     - J'aime partir d'un brief, comprendre son objectif et son audience, puis transformer une idée en contenu clair, cohérent et engageant.
+
+# Grande phrase en italique sous les paragraphes « À propos »
+drive: Ce qui m'anime ? Donner vie à une marque à travers des histoires qui résonnent et des expériences qu'on vit sur le terrain.
 
 process: [Comprendre, Structurer, Créer, Coordonner, Valoriser]
 
@@ -62,3 +68,16 @@ expertises:
     - label: Coordination
       title: Pilotage de projets
       items: [Briefs, Prestataires, Coordination, Respect des délais]
+
+# Boîte à outils, sous les expertises
+tools:
+    - label: Stratégie & social media
+      items: [Planning éditorial, Veille & e-réputation, Meta Business Suite, TikTok, LinkedIn]
+    - label: Création & brand content
+      items: [Photoshop, InDesign, Lightroom, Canva, CapCut, Rédaction web & storytelling]
+    - label: Gestion de projet
+      items: [Campagnes 360°, Coordination prestataires, Notion, Trello]
+
+# Uniquement de vrais retours — section masquée si la liste est vide.
+testimonials: []
+#   - { quote: "…", author: "Prénom Nom", context: "Fonction, entreprise" }

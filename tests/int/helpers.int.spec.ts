@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { youtubeId } from '../../src/blocks/YouTube'
-import { cleanMarkdown } from '../../src/endpoints/importJekyll'
+import { caseStudyFromFrontMatter, cleanMarkdown } from '../../src/endpoints/importJekyll'
 import { slugify } from '../../src/fields/slug'
 import { srcSet } from '../../src/lib/media'
 import type { Media } from '../../src/payload-types'
@@ -39,5 +39,13 @@ describe('srcSet', () => {
       sizes: { small: { url: 'https://m/x-480.webp', width: 480 }, medium: { url: null, width: null } },
     } as unknown as Media
     expect(srcSet(media)).toBe('https://m/x-480.webp 480w, https://m/x.jpg 2000w')
+  })
+})
+
+describe('caseStudyFromFrontMatter', () => {
+  it('transforme le front-matter en groupe « Étude de cas » en ignorant les vides', () => {
+    expect(
+      caseStudyFromFrontMatter({ challenge: '  Le défi.  ', strategy: ['Un', '', '  '], impact: 'pas une liste' }),
+    ).toEqual({ challenge: 'Le défi.', strategy: [{ text: 'Un' }], deliverables: [], impact: [] })
   })
 })
