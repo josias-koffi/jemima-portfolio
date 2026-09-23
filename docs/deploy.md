@@ -21,12 +21,14 @@ Pattern identique à cvforge : image GHCR → OpenTofu (DNS Cloudflare + Dokploy
    La clé Dokploy doit avoir **Enable Rate Limiting désactivé** (sinon 401 pendant 24 h).
 2. **Push `develop`** → staging. Au tout premier apply, les domaines sont créés après le compose :
    le site répond **404 → relancer le workflow une fois** (Actions › Deploy › Re-run).
-3. **Image GHCR** : le dépôt est privé, donc l'image aussi (voir « Accès de Dokploy à l'image » ci-dessous).
-4. **Import du contenu** : se connecter à `/admin` avec `ADMIN_EMAIL`, puis `POST /api/import-jekyll` (voir README).
-5. Créer le compte de Jémima dans *Réglages › Utilisateurs*.
-6. **Prod** : merge `develop` → `main`, puis étapes 4-5 sur la prod.
+3. **Import du contenu** : se connecter à `/admin` avec `ADMIN_EMAIL`, puis `POST /api/import-jekyll` (voir README).
+4. Créer le compte de Jémima dans *Réglages › Utilisateurs*.
+5. **Prod** : merge `develop` → `main`, puis étapes 3-4 sur la prod.
 
 ## Pièges connus (hérités de cvforge)
+
+- **Dépôt public obligatoire** (plan GitHub gratuit) : les secrets d'environnement et les restrictions de branche
+  n'existent pas sur un dépôt privé gratuit, et l'image GHCR publique permet à Dokploy de la tirer sans identifiants.
 
 - **OpenTofu possède le stack** : toute modification faite dans l'UI Dokploy est écrasée au prochain apply.
 - **Réseau partagé `dokploy-network`** : staging et prod publient les mêmes noms de services (`postgres`, `minio`).
