@@ -1,0 +1,64 @@
+# Infos générales affichées sur l'accueil et dans le pied de page.
+# Un champ laissé vide ("") n'est simplement pas affiché.
+
+name_first: Jémima
+name_last: Egla
+location: Paris, FR
+role: Communication · Brand Content · Activation
+status: Mastère MarCom & RP — INSEEC Paris
+
+hero_photo: /assets/img/profile_hero_section.jpeg # photo du hero (laisser vide pour la masquer)
+hero_photo_alt: Jémima Egla assise, dans une pose majestueuse
+portrait: /assets/img/jemima-parole.jpg
+portrait_alt: Jémima Egla en pleine prise de parole, en noir et blanc
+
+# Image affichée quand on partage le lien (LinkedIn, WhatsApp, X…).
+# Une page projet avec une couverture utilise sa couverture à la place.
+share_image: /assets/img/jemima-parole.jpg
+
+email: jemimae.egla@gmail.com
+phone: "" # ex. "+33 7 …" — laisser vide pour ne pas l'afficher en ligne
+linkedin: https://www.linkedin.com/in/jémima-egla-76b5a1245
+instagram: https://www.instagram.com/creative_core_communication
+instagram_label: Creative Core Communication
+
+marquee:
+    - Communication digitale
+    - Brand content
+    - Activation de marque
+    - Événementiel
+    - Storytelling
+    - Pop-up & PLV
+
+about:
+    - Je suis communicante spécialisée en contenus digitaux, communication visuelle et activation de marque.
+    - "Mon parcours, entre l'Afrique de l'Ouest et Paris, m'a amenée à travailler sur des campagnes 360°, des contenus digitaux, des événements, des supports visuels ainsi que des projets de communication interne et externe."
+    - J'aime partir d'un brief, comprendre son objectif et son audience, puis transformer une idée en contenu clair, cohérent et engageant.
+
+process: [Comprendre, Structurer, Créer, Coordonner, Valoriser]
+
+expertises:
+    - label: Communication digitale
+      title: Contenus & campagnes
+      items: [Contenus digitaux, Réseaux sociaux, Campagnes, Storytelling]
+    - label: Brand content
+      title: Identité de marque
+      items:
+          [
+              Création de contenus,
+              Identité visuelle,
+              Storytelling produit,
+              Valorisation de projets,
+          ]
+    - label: Activation & événementiel
+      title: Expériences terrain
+      items:
+          [
+              Salons & événements,
+              Pop-up stores,
+              Expériences de marque,
+              PLV & supports,
+          ]
+    - label: Coordination
+      title: Pilotage de projets
+      items: [Briefs, Prestataires, Coordination, Respect des délais]

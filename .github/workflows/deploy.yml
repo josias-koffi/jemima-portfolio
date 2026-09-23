@@ -1,0 +1,290 @@
+name: Deploy
+
+# Push sur develop → staging, push sur main → production.
+# workflow_dispatch : redéployer ou revenir à n'importe quel tag déjà construit.
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environnement cible"
+        required: true
+        type: choice
+        options: [staging, production]
+      image_tag:
+        description: "Tag d'image à déployer (sha court). Par défaut : sha du commit courant."
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/josias-koffi/jemima-portfolio
+
+jobs:
+  resolve:
+    name: Resolve target
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.target.outputs.environment }}
+      image_tag: ${{ steps.target.outputs.image_tag }}
+      site_domain: ${{ steps.target.outputs.site_domain }}
+      media_domain: ${{ steps.target.outputs.media_domain }}
+    steps:
+      - id: target
+        env:
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -n "${INPUT_ENVIRONMENT}" ]; then ENVIRONMENT="${INPUT_ENVIRONMENT}"
+          elif [ "${REF_NAME}" = "main" ]; then ENVIRONMENT="production"
+          else ENVIRONMENT="staging"; fi
+
+          IMAGE_TAG="${INPUT_IMAGE_TAG:-${GITHUB_SHA:0:7}}"
+          printf '%s' "${IMAGE_TAG}" | grep -qE '^[0-9a-f]{7,40}$' || { echo "image_tag doit être un sha." >&2; exit 1; }
+
+          # Lus uniquement par le smoke test ; les domaines servis sont définis dans infra/dokploy.
+          if [ "${ENVIRONMENT}" = "production" ]; then
+            SITE_DOMAIN="jemima.koklo.dev"; MEDIA_DOMAIN="jemima-media.koklo.dev"
+          else
+            SITE_DOMAIN="jemima-staging.koklo.dev"; MEDIA_DOMAIN="jemima-media-staging.koklo.dev"
+          fi
+          {
+            echo "environment=${ENVIRONMENT}"
+            echo "image_tag=${IMAGE_TAG}"
+            echo "site_domain=${SITE_DOMAIN}"
+            echo "media_domain=${MEDIA_DOMAIN}"
+          } >> "${GITHUB_OUTPUT}"
+
+  build:
+    name: Build & push image
+    if: github.event_name == 'push'
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=ref,event=branch
+            type=sha,prefix=,format=short
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.IMAGE }}:cache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:cache,mode=max
+
+  # Démarre l'image contre un Postgres jetable avant tout déploiement : les
+  # migrations Payload tournent au boot, un crash ici ne doit jamais atteindre
+  # un environnement.
+  verify-image:
+    name: Boot the image
+    needs: [resolve, build]
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: verify
+          POSTGRES_PASSWORD: verify
+          POSTGRES_DB: verify
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verify"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start the image
+        run: |
+          docker run -d --name app-verify --network host \
+            -e PORT=3000 \
+            -e DATABASE_URL=postgres://verify:verify@127.0.0.1:5432/verify \
+            -e PAYLOAD_SECRET=verify-only-not-a-real-secret \
+            -e SITE_URL=http://127.0.0.1:3000 -e SITE_ENV=staging \
+            -e APP_VERSION=${{ needs.resolve.outputs.image_tag }} \
+            "${IMAGE}:${{ needs.resolve.outputs.image_tag }}"
+      - name: Wait for /api/health, then render the home page
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3000/api/health; then
+              echo; echo "healthy after ${attempt} attempt(s)"
+              curl -fsS -o /dev/null http://127.0.0.1:3000/ && echo "home: ok"
+              curl -fsS -o /dev/null http://127.0.0.1:3000/admin/login && echo "admin: ok"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::L'image n'est jamais devenue saine."
+          exit 1
+      - name: Container logs
+        if: always()
+        run: docker logs app-verify 2>&1 | tail -80
+      - if: always()
+        run: docker rm -f app-verify
+
+  tofu:
+    name: OpenTofu (DNS)
+    needs: [resolve, build, verify-image]
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: jemima-tofu
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: infra/terraform
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_cf_api_token: ${{ secrets.CF_API_TOKEN }}
+      TF_VAR_cf_zone_id: ${{ secrets.CF_ZONE_ID }}
+      TF_VAR_vps20_ip: ${{ secrets.VPS20_IP }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_ENDPOINT_URL_S3: ${{ secrets.R2_ENDPOINT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - run: tofu init -input=false
+      - name: Plan
+        id: plan
+        run: |
+          set +e
+          tofu plan -input=false -lock-timeout=5m -detailed-exitcode -out=tfplan
+          code=$?
+          set -e
+          [ "${code}" -eq 1 ] && exit 1
+          echo "changes=${code}" >> "${GITHUB_OUTPUT}"
+      - name: Publish plan
+        run: |
+          { echo '## OpenTofu plan (DNS)'; echo '```'; tofu show -no-color tfplan; echo '```'; } >> "${GITHUB_STEP_SUMMARY}"
+      - name: Apply
+        if: steps.plan.outputs.changes == '2'
+        run: tofu apply -input=false -lock-timeout=5m tfplan
+
+  deploy:
+    name: Deploy ${{ needs.resolve.outputs.environment }}
+    needs: [resolve, tofu]
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve.outputs.environment }}
+    concurrency:
+      group: jemima-deploy-${{ needs.resolve.outputs.environment }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: infra/dokploy
+    env:
+      TF_IN_AUTOMATION: "true"
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_ENDPOINT_URL_S3: ${{ secrets.R2_ENDPOINT }}
+      TF_VAR_environment: ${{ needs.resolve.outputs.environment }}
+      TF_VAR_image_tag: ${{ needs.resolve.outputs.image_tag }}
+      # Secrets de CET environnement seulement (job porteur de `environment:`).
+      TF_VAR_postgres_password: ${{ secrets.POSTGRES_PASSWORD }}
+      TF_VAR_payload_secret: ${{ secrets.PAYLOAD_SECRET }}
+      TF_VAR_minio_access_key: ${{ secrets.MINIO_ACCESS_KEY }}
+      TF_VAR_minio_secret_key: ${{ secrets.MINIO_SECRET_KEY }}
+      TF_VAR_admin_email: ${{ secrets.ADMIN_EMAIL }}
+      TF_VAR_admin_password: ${{ secrets.ADMIN_PASSWORD }}
+      TF_VAR_smtp_user: ${{ secrets.SMTP_USER }}
+      TF_VAR_smtp_password: ${{ secrets.SMTP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Init
+        env:
+          ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
+        run: tofu init -input=false -backend-config="key=jemima/dokploy-${ENVIRONMENT}.tfstate"
+      - name: Plan
+        id: plan
+        run: |
+          set +e
+          tofu plan -input=false -lock-timeout=5m -detailed-exitcode -out=tfplan
+          code=$?
+          set -e
+          [ "${code}" -eq 1 ] && exit 1
+          echo "changes=${code}" >> "${GITHUB_OUTPUT}"
+      - name: Publish plan
+        run: |
+          { echo '## Dokploy plan'; echo '```'; tofu show -no-color tfplan; echo '```'; } >> "${GITHUB_STEP_SUMMARY}"
+      # Dokploy redéploie le stack ; l'apply attend un statut final.
+      - name: Apply
+        if: steps.plan.outputs.changes == '2'
+        run: tofu apply -input=false -lock-timeout=5m tfplan
+
+      - name: Smoke test
+        env:
+          SITE_DOMAIN: ${{ needs.resolve.outputs.site_domain }}
+        run: |
+          set -euo pipefail
+          for path in /api/health / /admin/login /robots.txt; do
+            echo "checking https://${SITE_DOMAIN}${path}"
+            curl -fsS --retry 6 --retry-delay 10 --retry-all-errors -o /dev/null "https://${SITE_DOMAIN}${path}"
+          done
+
+      # Un 200 prouve seulement que quelque chose répond : on vérifie que c'est
+      # bien CETTE image qui tourne (leçon cvforge : staging servait un vieux build).
+      - name: Assert the deployed version
+        env:
+          SITE_DOMAIN: ${{ needs.resolve.outputs.site_domain }}
+          IMAGE_TAG: ${{ needs.resolve.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            running=$(curl -fsS --retry 3 --retry-delay 5 --retry-all-errors "https://${SITE_DOMAIN}/version" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))')
+            [ "${running}" = "${IMAGE_TAG}" ] && { echo "running ${running}"; exit 0; }
+            echo "sert '${running}', attend '${IMAGE_TAG}' (${attempt}/12)"
+            sleep 10
+          done
+          echo "::error::Le site sert toujours '${running}' au lieu de '${IMAGE_TAG}'."
+          exit 1
+
+      - name: Summary
+        env:
+          ENVIRONMENT: ${{ needs.resolve.outputs.environment }}
+          IMAGE_TAG: ${{ needs.resolve.outputs.image_tag }}
+          SITE_DOMAIN: ${{ needs.resolve.outputs.site_domain }}
+          MEDIA_DOMAIN: ${{ needs.resolve.outputs.media_domain }}
+        run: |
+          {
+            echo "## Déployé"
+            echo "- environnement : ${ENVIRONMENT}"
+            echo "- image : ${IMAGE_TAG}"
+            echo "- site : https://${SITE_DOMAIN} — admin : https://${SITE_DOMAIN}/admin"
+            echo "- médias : https://${MEDIA_DOMAIN}"
+          } >> "${GITHUB_STEP_SUMMARY}"

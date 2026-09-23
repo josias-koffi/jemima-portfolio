@@ -1,0 +1,54 @@
+# Dev local : Postgres + MinIO (l'app tourne hors conteneur avec `pnpm dev`).
+#   docker compose up -d
+# Ports décalés pour ne pas gêner les autres projets du poste.
+name: jemima-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: jemima
+      POSTGRES_USER: jemima
+      POSTGRES_PASSWORD: jemima
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jemima -d jemima"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: jemima
+      MINIO_ROOT_PASSWORD: jemima-dev-secret
+    ports:
+      - "127.0.0.1:9100:9000"
+      - "127.0.0.1:9101:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Crée le bucket et le rend lisible publiquement (les médias sont publics).
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "mc alias set local http://minio:9000 jemima jemima-dev-secret &&
+             mc mb --ignore-existing local/media &&
+             mc anonymous set download local/media"
+    restart: "no"
+
+volumes:
+  pgdata:
+  miniodata:
