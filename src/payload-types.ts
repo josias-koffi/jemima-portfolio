@@ -210,14 +210,10 @@ export interface Project {
     };
     [k: string]: unknown;
   } | null;
-  gallery?:
-    | {
-        media: number | Media;
-        caption?: string | null;
-        wide?: boolean | null;
-        id?: string | null;
-      }[]
-    | null;
+  /**
+   * Affichée en mosaïque sous le texte du projet. « Créer » permet de déposer plusieurs fichiers d’un coup ; glisser pour réordonner. Légende et description : dans la médiathèque.
+   */
+  gallery?: (number | Media)[] | null;
   links?:
     | {
         label: string;
@@ -431,14 +427,7 @@ export interface ProjectsSelect<T extends boolean = true> {
             };
       };
   content?: T;
-  gallery?:
-    | T
-    | {
-        media?: T;
-        caption?: T;
-        wide?: T;
-        id?: T;
-      };
+  gallery?: T;
   links?:
     | T
     | {

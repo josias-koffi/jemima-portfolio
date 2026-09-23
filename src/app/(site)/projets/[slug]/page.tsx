@@ -5,9 +5,10 @@ import type { CSSProperties } from 'react'
 
 import { CaseStudy } from '../../../../components/CaseStudy'
 import { Cover } from '../../../../components/Cover'
+import { Gallery } from '../../../../components/Gallery'
 import { ProjectContent } from '../../../../components/ProjectContent'
 import { getProjects } from '../../../../lib/data'
-import { asMedia, bestUrl, srcSet } from '../../../../lib/media'
+import { asMedia, bestUrl } from '../../../../lib/media'
 import { pad } from '../../../../lib/site'
 
 type Params = { params: Promise<{ slug: string }> }
@@ -114,26 +115,7 @@ export default async function ProjectPage({ params }: Params) {
         )}
       </div>
 
-      {(project.gallery ?? []).length > 0 && (
-        <div className="gallery wrap">
-          {project.gallery!.map((g) => {
-            const m = asMedia(g.media)
-            if (!m?.url) return null
-            return (
-              <figure className={`gallery__item reveal${g.wide ? ' gallery__item--wide' : ''}`} key={g.id}>
-                <img
-                  src={m.url}
-                  srcSet={srcSet(m)}
-                  sizes={g.wide ? '100vw' : '(max-width: 760px) 100vw, 50vw'}
-                  alt={m.alt ?? ''}
-                  loading="lazy"
-                />
-                {(g.caption || m.caption) && <figcaption>{g.caption || m.caption}</figcaption>}
-              </figure>
-            )
-          })}
-        </div>
-      )}
+      <Gallery items={project.gallery} />
 
       {next && (
         <a className="next" href={`/projets/${next.slug}`}>

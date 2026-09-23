@@ -126,14 +126,15 @@ export const Projects: CollectionConfig = {
     },
     {
       name: 'gallery',
-      label: 'Galerie (en bas de page)',
-      type: 'array',
-      labels: { singular: 'Image', plural: 'Images' },
-      fields: [
-        { name: 'media', label: 'Image', type: 'upload', relationTo: 'media', required: true },
-        { name: 'caption', label: 'Légende', type: 'text' },
-        { name: 'wide', label: 'Pleine largeur', type: 'checkbox', defaultValue: false },
-      ],
+      label: 'Galerie — photos, visuels, vidéos',
+      type: 'upload',
+      relationTo: 'media',
+      hasMany: true,
+      filterOptions: { mimeType: { not_equals: 'application/pdf' } },
+      admin: {
+        description:
+          'Affichée en mosaïque sous le texte du projet. « Créer » permet de déposer plusieurs fichiers d’un coup ; glisser pour réordonner. Légende et description : dans la médiathèque.',
+      },
     },
     {
       name: 'links',
