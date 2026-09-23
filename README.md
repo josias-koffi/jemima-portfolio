@@ -35,6 +35,7 @@ TOKEN=$(curl -s -X POST localhost:3000/api/users/login -H 'Content-Type: applica
 curl -X POST localhost:3000/api/import-jekyll -H "Authorization: JWT $TOKEN"
 ```
 
+En staging/prod : **Actions › Import content › Run workflow** (choisir l'environnement).
 L'import est idempotent (projets existants ignorés ; profil rempli seulement s'il est vide, `?force=1` pour l'écraser).
 
 ## Modifier le modèle de données

@@ -37,16 +37,19 @@ services:
       timeout: 3s
       retries: 10
 
-  # Crée le bucket et le rend lisible publiquement (les médias sont publics).
+  # Crée le bucket ; lecture anonyme des fichiers seulement (pas de listing).
   minio-init:
     image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
     depends_on:
       minio:
         condition: service_healthy
+    environment:
+      POLICY: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetObject"],"Resource":["arn:aws:s3:::media/*"]}]}'
     entrypoint: >
-      sh -c "mc alias set local http://minio:9000 jemima jemima-dev-secret &&
+      sh -c 'mc alias set local http://minio:9000 jemima jemima-dev-secret &&
              mc mb --ignore-existing local/media &&
-             mc anonymous set download local/media"
+             printf "%s" "$$POLICY" > /tmp/policy.json &&
+             mc anonymous set-json /tmp/policy.json local/media'
     restart: "no"
 
 volumes:

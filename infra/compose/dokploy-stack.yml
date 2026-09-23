@@ -86,7 +86,9 @@ services:
       timeout: 5s
       retries: 10
 
-  # One-shot à chaque déploiement : crée le bucket (idempotent) et le rend lisible.
+  # One-shot à chaque déploiement : crée le bucket (idempotent) et autorise la
+  # lecture anonyme des fichiers UNIQUEMENT (s3:GetObject) — pas de listing, qui
+  # révélerait les médias des projets encore en brouillon.
   minio-init:
     image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
     restart: "no"
@@ -97,10 +99,12 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_URL: http://${PROJECT}-minio:9000
+      POLICY: '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetObject"],"Resource":["arn:aws:s3:::media/*"]}]}'
     entrypoint: >
       sh -c 'mc alias set s3 "$$MINIO_URL" "$$MINIO_ACCESS_KEY" "$$MINIO_SECRET_KEY" &&
              mc mb --ignore-existing s3/media &&
-             mc anonymous set download s3/media'
+             printf "%s" "$$POLICY" > /tmp/policy.json &&
+             mc anonymous set-json /tmp/policy.json s3/media'
 
   # pg_dump quotidien dans le volume db_backups (7 jours, 4 semaines, 6 mois).
   # ATTENTION : sauvegarde sur le VPS uniquement.

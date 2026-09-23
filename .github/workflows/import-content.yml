@@ -1,0 +1,40 @@
+name: Import content
+
+# Importe le contenu de l'ancien site Jekyll (dossier seed/ de l'image) dans un
+# environnement. Idempotent : les projets existants sont ignorés, le profil
+# n'est rempli que s'il est vide (cocher « force » pour l'écraser).
+# Se connecte avec ADMIN_EMAIL / ADMIN_PASSWORD de l'environnement choisi.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environnement"
+        required: true
+        type: choice
+        options: [staging, production]
+      force_profile:
+        description: "Écraser le profil déjà rempli"
+        type: boolean
+        default: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Import
+        env:
+          SITE: ${{ inputs.environment == 'production' && 'https://jemima.koklo.dev' || 'https://jemima-staging.koklo.dev' }}
+          FORCE: ${{ inputs.force_profile && '?force=1' || '' }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          token=$(python3 -c 'import json,os;print(json.dumps({"email":os.environ["ADMIN_EMAIL"],"password":os.environ["ADMIN_PASSWORD"]}))' \
+            | curl -fsS -X POST "${SITE}/api/users/login" -H 'Content-Type: application/json' -d @- \
+            | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+          echo "::add-mask::${token}"
+          report=$(curl -fsS -X POST "${SITE}/api/import-jekyll${FORCE}" -H "Authorization: JWT ${token}")
+          echo "${report}" | python3 -m json.tool
+          { echo '## Import'; echo '```json'; echo "${report}" | python3 -m json.tool; echo '```'; } >> "${GITHUB_STEP_SUMMARY}"
