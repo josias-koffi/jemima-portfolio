@@ -39,14 +39,15 @@ vars:
 
 environments:
   production:
-    branch: main                     # déployée à la main uniquement (workflow_dispatch depuis main)
+    branch: main
+    deploy: manual                   # un push sur main ne déploie jamais : Run workflow depuis main
     volumePrefix: jemima             # volumes jemima_* (live, verified 2026-10-04)
     externalVolumes: true
     domains: { site: jemima.koklo.dev, media: jemima-media.koklo.dev }
     vars:
       EMAIL_FROM: Portfolio Jémima <no-reply@koklo.dev>
   staging:
-    branch: develop
+    branch: develop                  # deploy: auto (défaut) : chaque push sur develop déploie
     volumePrefix: jemima-staging     # volumes jemima-staging_* (live)
     externalVolumes: true
     domains: { site: jemima-staging.koklo.dev, media: jemima-media-staging.koklo.dev }

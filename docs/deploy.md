@@ -7,15 +7,19 @@ environnements `staging` et `production`.
 
 ## Chaîne
 
+Les règles de déclenchement sont dans le manifest (`environments.<env>.branch` et
+`deploy: auto|manual`), pas dans le workflow.
+
 | Déclencheur | Effet |
 |---|---|
 | push sur `develop` | build de l'image (`sha` court) → démarrage de vérification contre un Postgres jetable → déploiement **staging** |
-| *Actions → Deploy → Run workflow*, branche `main`, `environment: production` | déploiement **production** (seulement depuis `main` : règle de l'environnement GitHub) |
+| push sur `main` | rien : la production est en `deploy: manual` |
+| *Actions → Deploy → Run workflow* depuis `main` | déploiement **production** (refusé depuis une autre branche) |
 | idem avec `image_tag` | redéploie un tag existant : promotion du tag validé en staging, ou rollback |
 | idem avec `plan_only` | affiche le plan sans rien appliquer |
 
 Pour mettre en prod ce qui tourne en staging : merge `develop` → `main`, puis *Run workflow* sur
-`main` avec `environment: production` et `image_tag` = le tag du staging.
+`main` avec `image_tag` = le tag du staging (pas de rebuild).
 
 Secrets : ceux listés dans le manifest, dans les environnements GitHub `staging` et `production`.
 Variables du repo : `DOKPLOY_URL`, `TF_STATE_BUCKET`. Secrets du repo : `DOKPLOY_API_KEY`, `R2_*`.
