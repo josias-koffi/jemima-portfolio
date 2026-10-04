@@ -59,4 +59,4 @@ PW_CHANNEL=chrome pnpm test:e2e     # smoke test du site (serveur local + conten
 
 ## Déploiement
 
-Push sur `develop` → staging, merge dans `main` → production. Détails, secrets et pièges : [docs/deploy.md](docs/deploy.md).
+Push sur `develop` → staging ; la production se déploie à la main depuis `main` (*Actions → Deploy*). Détails, secrets et pièges : [docs/deploy.md](docs/deploy.md).

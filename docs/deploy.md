@@ -1,14 +1,27 @@
 # Déploiement
 
-Pattern identique à cvforge : image GHCR → OpenTofu (DNS Cloudflare + Dokploy) → smoke test + vérification de version.
+Jemima est déployée par la plateforme [josias-koffi/infra](https://github.com/josias-koffi/infra) :
+le repo ne contient que [`.deploy/manifest.yaml`](../.deploy/manifest.yaml) et le workflow
+[`deploy-platform.yml`](../.github/workflows/deploy-platform.yml). Projet Dokploy `jemima`,
+environnements `staging` et `production`.
 
-## Chaîne (`.github/workflows/deploy.yml`)
+## Chaîne
 
-1. **resolve** — `develop` → staging, `main` → production ; `workflow_dispatch` pour redéployer / revenir à un tag (sha court).
-2. **build** — `ghcr.io/josias-koffi/jemima-portfolio:<sha>` (+ `develop` / `main` / `latest`).
-3. **verify-image** — démarre l'image contre un Postgres jetable : migrations au boot, `/api/health`, `/`, `/admin/login`.
-4. **tofu (DNS)** — `infra/terraform` : 4 enregistrements A vers VPS20 (state `jemima/terraform.tfstate`).
-5. **deploy** — `infra/dokploy` : projet + compose + 2 domaines Let's Encrypt (state `jemima/dokploy-<env>.tfstate`), puis smoke test et contrôle que `/version` renvoie bien le sha déployé.
+| Déclencheur | Effet |
+|---|---|
+| push sur `develop` | build de l'image (`sha` court) → démarrage de vérification contre un Postgres jetable → déploiement **staging** |
+| *Actions → Deploy → Run workflow*, branche `main`, `environment: production` | déploiement **production** (seulement depuis `main` : règle de l'environnement GitHub) |
+| idem avec `image_tag` | redéploie un tag existant : promotion du tag validé en staging, ou rollback |
+| idem avec `plan_only` | affiche le plan sans rien appliquer |
+
+Pour mettre en prod ce qui tourne en staging : merge `develop` → `main`, puis *Run workflow* sur
+`main` avec `environment: production` et `image_tag` = le tag du staging.
+
+Secrets : ceux listés dans le manifest, dans les environnements GitHub `staging` et `production`.
+Variables du repo : `DOKPLOY_URL`, `TF_STATE_BUCKET`. Secrets du repo : `DOKPLOY_API_KEY`, `R2_*`.
+
+Le DNS (`jemima[-media][-staging].koklo.dev`) reste géré par [`infra/terraform`](../infra/terraform)
+(`dns: external` dans le manifest).
 
 ## Stack (`infra/compose/dokploy-stack.yml`)
 
@@ -29,12 +42,12 @@ Pattern identique à cvforge : image GHCR → OpenTofu (DNS Cloudflare + Dokploy
 
 - **Dépôt public obligatoire** (plan GitHub gratuit) : les secrets d'environnement et les restrictions de branche
   n'existent pas sur un dépôt privé gratuit, et l'image GHCR publique permet à Dokploy de la tirer sans identifiants.
-
-- **OpenTofu possède le stack** : toute modification faite dans l'UI Dokploy est écrasée au prochain apply.
+- **La plateforme possède le stack** : toute modification faite dans l'UI Dokploy est écrasée au prochain déploiement.
 - **Réseau partagé `dokploy-network`** : staging et prod publient les mêmes noms de services (`postgres`, `minio`).
   L'app n'utilise que les alias uniques `<projet>-postgres` / `<projet>-minio`. Ne jamais référencer un nom nu.
 - **DNS non proxifié** au départ (`cloudflare_proxied = false`) pour que Let's Encrypt (HTTP-01) émette les certificats.
-- **Secrets dans le state** : `dokploy_compose.env` n'est pas marqué sensible → le bucket R2 doit rester privé.
+- **Secrets dans le state** : l'env du compose est dans le state OpenTofu → le bucket R2 doit rester privé.
 - **Ne pas régénérer** `POSTGRES_PASSWORD` / `MINIO_*` après le premier déploiement : les volumes gardent l'ancien mot de passe.
 - **Images MinIO** : plus publiées sur Docker Hub → `quay.io/minio/*` avec tag épinglé.
-- **Sauvegardes** : Postgres sur le VPS uniquement ; MinIO non sauvegardé (à ajouter : `mc mirror` vers un stockage externe).
+- **Sauvegardes** : Postgres et le volume MinIO sont sauvegardés chaque nuit vers R2 par Dokploy (3h / 4h, 35 jours en prod,
+  7 en staging), en plus du `db_backup` local.

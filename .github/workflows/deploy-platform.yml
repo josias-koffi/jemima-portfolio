@@ -1,16 +1,24 @@
 name: Deploy
 
 # Déploiement par la plateforme josias-koffi/infra, piloté par .deploy/manifest.yaml.
-# Push sur develop → staging, push sur main → production (activé après la migration).
-# workflow_dispatch : redéployer ou revenir à n'importe quel tag déjà construit,
-# ou seulement afficher le plan (plan_only).
+#
+#   push sur develop  → staging, automatiquement
+#   production        → uniquement à la main (Actions → Deploy → Run workflow,
+#                       branche main, environment = production). Un push ne
+#                       déploie jamais la prod.
+#   image_tag         → redéployer ou revenir à un tag déjà construit
+#                       (promouvoir en prod le tag validé en staging)
+#   plan_only         → afficher le plan sans rien appliquer
 
 on:
+  push:
+    branches: [develop]
   workflow_dispatch:
     inputs:
       environment:
-        description: "Environnement cible"
+        description: "Environnement cible (production : lancer depuis main)"
         required: true
+        default: staging
         type: choice
         options: [staging, production]
       image_tag:
@@ -140,7 +148,7 @@ jobs:
     if: ${{ !failure() && !cancelled() }}
     uses: josias-koffi/infra/.github/workflows/deploy.yml@main
     with:
-      environment: ${{ inputs.environment }}
+      environment: ${{ inputs.environment || 'staging' }}
       image_tag: ${{ needs.resolve.outputs.image_tag }}
-      plan_only: ${{ inputs.plan_only }}
+      plan_only: ${{ inputs.plan_only == true }}
     secrets: inherit
